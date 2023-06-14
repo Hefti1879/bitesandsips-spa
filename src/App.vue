@@ -2,8 +2,8 @@
   <div id="App" style="background-color: #faecdd">
     <img alt="bitesandsips_logo" src="./assets/logoV1.1.png" class="logo" />
     <h1 class="title">BitesAndSips</h1>
-    <p v-if="access_token != undefined && access_token.length > 0">Logged in as {{email}}</p>
-    <BitesAndSipsFilters :filters="filters" @setErrorText="setErrorText" :token="access_token" @set-token="setToken" @search_places="search_places" :coordinates="coordinates"></BitesAndSipsFilters>
+    <APITokenSetter :apiToken="apiToken" @setToken="setAPIToken"></APITokenSetter>
+    <BitesAndSipsFilters :filters="filters" @setErrorText="setErrorText" @search_places="search_places" :coordinates="coordinates"></BitesAndSipsFilters>
     <div v-if="places.length > 0">
       <v-card :loading="loading" class="mx-auto my-12" max-width="374">
         <template v-slot:loader="{ isActive }">
@@ -61,7 +61,7 @@
         </div>
         <v-divider class="mx-4 mb-1"></v-divider>
 
-        <v-card-actions class="actions" v-if="access_token != undefined && access_token.length > 0">
+        <v-card-actions class="actions">
           <v-btn :class="getButtonClass(true)" variant="text" @click.prevent="like">
             <v-icon icon="mdi-thumb-up"></v-icon> Like
           </v-btn>
@@ -80,33 +80,23 @@
     </v-progress-circular>
     </div>
     <p color="red">{{errorText}}</p>
-    <div class="auth-container">
-      <div class="component">
-        <BitesAndSipsLogin @setErrorText="setErrorText" @set-token="setToken" :token="access_token" />
-      </div>
-      <div class="component" v-if="access_token == undefined || access_token.length < 1">
-        <BitesAndSipsSignUp @setErrorText="setErrorText" :token="access_token" />
-      </div>
-    </div>
   </div>
 </template>
 
 <script>
 import BitesAndSipsFilters from "./BitesAndSipsFilters.vue";
-import BitesAndSipsLogin from "./BitesAndSipsLogin.vue";
-import BitesAndSipsSignUp from "./BitesAndSipsSignUp.vue";
+import APITokenSetter from "./APITokenSetter.vue";
 import axios from "axios";
 
 export default {
   name: "App",
   components: {
-    BitesAndSipsLogin,
     BitesAndSipsFilters,
-    BitesAndSipsSignUp,
+    APITokenSetter
   },
   data() {
     return {
-      access_token: localStorage.getItem("access_token"),
+      apiToken: '',
       coordinates: {
         latitude: '',
         longitude: ''
@@ -122,15 +112,17 @@ export default {
       dislikes: [],
       loading: false,
       internalRatingValue: 0,
-      email: '',
       errorText: ''
     }
   },
   created: function () {
     this.set_coordinates();
-    this.load_user();
   },
   methods: {
+    setAPIToken(token){
+      this.apiToken = token;
+      //localStorage.setItem("APIToken", token);
+    },
     search_places(maxDistance, minTime, type, address) {
       this.loading = true;
       let params = {
@@ -183,50 +175,6 @@ export default {
         this.coordinates.longitude = pos.coords.longitude;
         this.coordinates.latitude = pos.coords.latitude;
       });
-    },
-    setToken(token){
-      this.access_token = token;
-      if(token.length){
-        localStorage.setItem('access_token', token);
-        this.load_user();
-      } else{
-        localStorage.removeItem('access_token');
-        this.likes = [];
-        this.dislikes = []
-      }
-
-    },
-    load_user() {
-      if (this.access_token != undefined && this.access_token.length > 0) {
-        axios.defaults.headers.common["Authorization"] = `Bearer ${this.access_token}`;
-        axios.defaults.withCredentials = true;
-        axios
-          .get("https://localhost/api/user")
-          .then((response) => {
-            let data = JSON.parse(response.data);
-            let userfilters = data.filters;
-            this.email = data.email;
-            this.likes = data.likes;
-            this.dislikes = data.dislikes;
-            if(userfilters != undefined){
-              //this.filters.maxDistance = userfilters.radius;
-             // this.filters.minTime = userfilters.min_time;
-              //this.filters.placeType = userfilters.type;
-              this.filters = {
-                  maxDistance: userfilters.radius,
-                  minTime: userfilters.min_time,
-                  placeType: userfilters.type
-              }
-            }
-          })
-          .catch(() => {
-            this.access_token = '';
-            localStorage.removeItem("access_token");
-            this.email = '';
-            this.likes = '';
-            this.dislikes = '';
-          });
-      }
     },
     like() {
       this.loading = true;

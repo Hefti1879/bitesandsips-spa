@@ -59,7 +59,6 @@ export default {
       latitude: String,
       longitude: String,
     },
-    token: String,
     filters: {
       placeType: String,
       minTime: Number,
@@ -93,7 +92,7 @@ export default {
   },
   methods: {
     search() {
-      this.save_filters();
+      //this.save_filters();
       this.$emit(
         "search_places",
         this.maxDistance * 1000,
